@@ -1,14 +1,25 @@
 package com.knowlegdebase.knowledge.domain.model;
 
-import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import com.knowlegdebase.shared.domain.BaseEntity;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import com.knowlegdebase.shared.domain.BaseEntity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.experimental.SuperBuilder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * The core domain entity representing a document in the Knowledge Base.
@@ -23,6 +34,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "documents")
 @Getter
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Document extends BaseEntity<UUID> {
 
@@ -51,16 +63,14 @@ public class Document extends BaseEntity<UUID> {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentChunk> chunks = new ArrayList<>();
 
-    public Document(String title, String content, DocumentType type, DocumentSource source) {
-        this.title = title;
-        this.content = content;
-        this.type = type;
-        this.source = source;
-        this.status = DocumentStatus.DRAFT;
-    }
-
     // --- Behavior Methods (Rich Domain Model) ---
 
+    /**
+     * Bắt đầu quá trình xử lý tài liệu (ví dụ: chia nhỏ, nhúng vector).
+     * Trạng thái hợp lệ để bắt đầu là DRAFT (mới tạo) hoặc FAILED (thử lại).
+     *
+     * @throws IllegalStateException Nếu tài liệu không ở trạng thái hợp lệ.
+     */
     public void markAsProcessing() {
         if (this.status != DocumentStatus.DRAFT && this.status != DocumentStatus.FAILED) {
             throw new IllegalStateException("Chỉ có thể bắt đầu xử lý document ở trạng thái DRAFT hoặc FAILED");
@@ -68,11 +78,23 @@ public class Document extends BaseEntity<UUID> {
         this.status = DocumentStatus.PROCESSING;
     }
 
+    /**
+     * Thêm một phân đoạn (chunk) văn bản mới thuộc về tài liệu này.
+     *
+     * @param chunkText Nội dung của phân đoạn văn bản.
+     * @param chunkIndex Số thứ tự của phân đoạn trong tài liệu.
+     * @param tokenSize Kích thước phân đoạn tính bằng số lượng token.
+     */
     public void addChunk(String chunkText, int chunkIndex, int tokenSize) {
         DocumentChunk chunk = new DocumentChunk(this, chunkText, chunkIndex, tokenSize);
         this.chunks.add(chunk);
     }
 
+    /**
+     * Đánh dấu tài liệu đã hoàn tất quá trình chia nhỏ (chunking).
+     *
+     * @throws IllegalStateException Nếu tài liệu không ở trạng thái PROCESSING.
+     */
     public void markAsChunked() {
         if (this.status != DocumentStatus.PROCESSING) {
             throw new IllegalStateException("Document phải đang ở trạng thái PROCESSING mới có thể đánh dấu là CHUNKED");
@@ -80,6 +102,12 @@ public class Document extends BaseEntity<UUID> {
         this.status = DocumentStatus.CHUNKED;
     }
 
+    /**
+     * Đánh dấu toàn bộ các phân đoạn (chunks) của tài liệu đã được nhúng 
+     * (embedded) thành công vào Vector Database.
+     *
+     * @throws IllegalStateException Nếu tài liệu chưa hoàn tất việc chia nhỏ (CHUNKED).
+     */
     public void markAsEmbedded() {
         if (this.status != DocumentStatus.CHUNKED) {
             throw new IllegalStateException("Document phải ở trạng thái CHUNKED mới có thể cập nhật thành EMBEDDED");
@@ -87,6 +115,9 @@ public class Document extends BaseEntity<UUID> {
         this.status = DocumentStatus.EMBEDDED;
     }
 
+    /**
+     * Đánh dấu quá trình xử lý tài liệu gặp lỗi và thất bại.
+     */
     public void markAsFailed() {
         this.status = DocumentStatus.FAILED;
     }
