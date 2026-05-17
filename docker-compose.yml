@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL (Relational Database)
+  # Lưu trữ Metadata, Documents (thô), Tags, Query Logs
+  postgres:
+    image: postgres:15-alpine
+    container_name: kbai_postgres
+    environment:
+      POSTGRES_DB: kbai_db
+      POSTGRES_USER: kb_user
+      POSTGRES_PASSWORD: kb_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kbai_network
+    restart: unless-stopped
+
+  # 2. Qdrant (Vector Database)
+  # Lưu trữ Embeddings và hỗ trợ Semantic Search siêu tốc
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: kbai_qdrant
+    ports:
+      - "6333:6333" # REST API
+      - "6334:6334" # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - kbai_network
+    restart: unless-stopped
+
+  # 3. Redis (Cache Layer - Theo đề xuất Optional nhưng rất hữu ích cho CQRS Gateway)
+  redis:
+    image: redis:7-alpine
+    container_name: kbai_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kbai_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
+
+networks:
+  kbai_network:
+    driver: bridge

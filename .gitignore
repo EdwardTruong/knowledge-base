@@ -115,3 +115,4 @@ Thumbs.db
 
 #based on
 .agent/skills/base/*
+.agent/skills/commit-msg/*

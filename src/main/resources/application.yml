@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: kbai-api-core
+  
+  # Cấu hình PostgreSQL
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kbai_db
+    username: kb_user
+    password: kb_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update # Dùng tạm cho MVP, sau sẽ dùng Flyway/Liquibase
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Cấu hình Spring AI Ollama (Local)
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3 # Có thể đổi sang các model khác như mistral, phi3
+    
+    # Cấu hình Vector Database Qdrant
+    vectorstore:
+      qdrant:
+        host: localhost
+        port: 6334 # gRPC port
+        collection-name: knowledge_chunks
